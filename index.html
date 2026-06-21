@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="th" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="ระบบจัดการเงินกู้และจำนำ - ติดตามลูกค้า ดอกเบี้ย และกำไรอย่างมืออาชีพ" />
+  <title>Vider Finance – ระบบจัดการเงินกู้และจำนำ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar" role="navigation" aria-label="เมนูหลัก">
+    <div class="sidebar-header">
+      <div class="brand">
+        <div class="brand-icon">₿</div>
+        <div class="brand-text">
+          <span class="brand-name">Vider</span>
+          <span class="brand-sub">Finance</span>
+        </div>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="ปิดเมนู">&#8249;</button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <span class="nav-section-label">ภาพรวม</span>
+        <a href="#" class="nav-item active" id="nav-dashboard" data-page="dashboard">
+          <span class="nav-icon">📊</span>
+          <span class="nav-label">แดชบอร์ด</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-label">จัดการ</span>
+        <a href="#" class="nav-item" id="nav-customers" data-page="customers">
+          <span class="nav-icon">👥</span>
+          <span class="nav-label">ลูกค้า</span>
+          <span class="nav-badge" id="badge-customers">0</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-loans" data-page="loans">
+          <span class="nav-icon">💰</span>
+          <span class="nav-label">เงินกู้ 10วัน</span>
+          <span class="nav-badge" id="badge-loans">0</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-daily" data-page="daily">
+          <span class="nav-icon">📅</span>
+          <span class="nav-label">กู้รายวัน</span>
+          <span class="nav-badge" id="badge-daily">0</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-pawns" data-page="pawns">
+          <span class="nav-icon">💍</span>
+          <span class="nav-label">จำนำ</span>
+          <span class="nav-badge" id="badge-pawns">0</span>
+        </a>
+      </div>
+
+      <div class="nav-section">
+        <span class="nav-section-label">การเงิน</span>
+        <a href="#" class="nav-item" id="nav-transactions" data-page="transactions">
+          <span class="nav-icon">📋</span>
+          <span class="nav-label">รายการ</span>
+        </a>
+        <a href="#" class="nav-item" id="nav-reports" data-page="reports">
+          <span class="nav-icon">📈</span>
+          <span class="nav-label">รายงาน</span>
+        </a>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="current-date" id="currentDate"></div>
+      <div class="interest-info">
+        <span class="rate-badge loan">กู้ 20%/10วัน</span>
+        <span class="rate-badge pawn">จำนำ 5%/10วัน</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content" id="mainContent">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="เปิดเมนู">☰</button>
+      <div class="topbar-title" id="topbarTitle">แดชบอร์ด</div>
+      <div class="topbar-actions">
+        <button class="btn btn-primary" id="quickAddBtn">+ เพิ่มรายการ</button>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <div class="pages-container">
+
+      <!-- Dashboard Page -->
+      <section class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1>ภาพรวมธุรกิจ</h1>
+          <p class="page-subtitle">ข้อมูล ณ วันที่ <span id="dashDate"></span></p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+          <div class="kpi-card profit">
+            <div class="kpi-icon">💹</div>
+            <div class="kpi-content">
+              <div class="kpi-label">กำไรสุทธิ</div>
+              <div class="kpi-value" id="kpi-profit">฿0</div>
+              <div class="kpi-change" id="kpi-profit-change">เดือนนี้</div>
+            </div>
+          </div>
+          <div class="kpi-card income">
+            <div class="kpi-icon">📥</div>
+            <div class="kpi-content">
+              <div class="kpi-label">รายรับดอกเบี้ย</div>
+              <div class="kpi-value" id="kpi-income">฿0</div>
+              <div class="kpi-change" id="kpi-income-sub">ดอกค้างรับทั้งหมด</div>
+            </div>
+          </div>
+          <div class="kpi-card loan-total">
+            <div class="kpi-icon">💰</div>
+            <div class="kpi-content">
+              <div class="kpi-label">ยอดกู้รวม</div>
+              <div class="kpi-value" id="kpi-loans">฿0</div>
+              <div class="kpi-change" id="kpi-loans-count">0 สัญญา</div>
+            </div>
+          </div>
+          <div class="kpi-card pawn-total">
+            <div class="kpi-icon">💍</div>
+            <div class="kpi-content">
+              <div class="kpi-label">ยอดจำนำรวม</div>
+              <div class="kpi-value" id="kpi-pawns">฿0</div>
+              <div class="kpi-change" id="kpi-pawns-count">0 รายการ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Due Today -->
+        <div class="section-grid">
+          <div class="card due-today-card">
+            <div class="card-header">
+              <h2 class="card-title">⚠️ ครบกำหนดใกล้วันนี้</h2>
+              <span class="card-badge" id="due-count">0 รายการ</span>
+            </div>
+            <div class="due-list" id="dueList">
+              <div class="empty-state">ไม่มีรายการที่ครบกำหนด</div>
+            </div>
+          </div>
+
+          <div class="card recent-card">
+            <div class="card-header">
+              <h2 class="card-title">🕐 รายการล่าสุด</h2>
+            </div>
+            <div class="recent-list" id="recentList">
+              <div class="empty-state">ยังไม่มีรายการ</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Chart -->
+        <div class="card chart-card">
+          <div class="card-header">
+            <h2 class="card-title">📊 สรุปพอร์ตการเงิน</h2>
+          </div>
+          <div class="portfolio-summary" id="portfolioSummary">
+            <div class="portfolio-bar-container">
+              <div class="portfolio-label">เงินกู้ (20%/10วัน)</div>
+              <div class="portfolio-bar-wrap">
+                <div class="portfolio-bar loan-bar" id="loanBar" style="width:0%"></div>
+              </div>
+              <div class="portfolio-amount" id="loanBarAmount">฿0</div>
+            </div>
+            <div class="portfolio-bar-container">
+              <div class="portfolio-label">กู้รายวัน</div>
+              <div class="portfolio-bar-wrap">
+                <div class="portfolio-bar" id="dailyBar" style="width:0%; background-color: var(--accent-purple);"></div>
+              </div>
+              <div class="portfolio-amount" id="dailyBarAmount">฿0</div>
+            </div>
+            <div class="portfolio-bar-container">
+              <div class="portfolio-label">จำนำ (5%/10วัน)</div>
+              <div class="portfolio-bar-wrap">
+                <div class="portfolio-bar pawn-bar" id="pawnBar" style="width:0%"></div>
+              </div>
+              <div class="portfolio-amount" id="pawnBarAmount">฿0</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Customers Page -->
+      <section class="page" id="page-customers">
+        <div class="page-header">
+          <h1>จัดการลูกค้า</h1>
+          <button class="btn btn-primary" id="addCustomerBtn">+ เพิ่มลูกค้า</button>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="search" class="search-input" id="customerSearch" placeholder="ค้นหาลูกค้า..." />
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="customerTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ชื่อ-นามสกุล</th>
+                  <th>เบอร์โทร</th>
+                  <th>ที่อยู่</th>
+                  <th>บัตรประชาชน</th>
+                  <th>ยอดกู้</th>
+                  <th>ยอดจำนำ</th>
+                  <th>กู้รายวัน</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody">
+                <tr class="empty-row"><td colspan="10">ยังไม่มีลูกค้า</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Loans Page -->
+      <section class="page" id="page-loans">
+        <div class="page-header">
+          <h1>จัดการเงินกู้</h1>
+          <button class="btn btn-primary" id="addLoanBtn">+ เพิ่มสัญญากู้</button>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="search" class="search-input" id="loanSearch" placeholder="ค้นหาสัญญา..." />
+            <select class="filter-select" id="loanStatusFilter">
+              <option value="">ทุกสถานะ</option>
+              <option value="active">กำลังดำเนินการ</option>
+              <option value="overdue">เกินกำหนด</option>
+              <option value="paid">ชำระแล้ว</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="loanTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ลูกค้า</th>
+                  <th>เงินต้น</th>
+                  <th>ดอกเบี้ย/รอบ</th>
+                  <th>วันที่กู้</th>
+                  <th>ครบกำหนด</th>
+                  <th>ดอกค้าง</th>
+                  <th>รอบที่</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="loanTableBody">
+                <tr class="empty-row"><td colspan="10">ยังไม่มีสัญญากู้</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Daily Loans Page -->
+      <section class="page" id="page-daily">
+        <div class="page-header">
+          <h1>จัดการเงินกู้รายวัน</h1>
+          <button class="btn btn-primary" id="addDailyBtn">+ เพิ่มกู้รายวัน</button>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="search" class="search-input" id="dailySearch" placeholder="ค้นหาสัญญา..." />
+            <select class="filter-select" id="dailyStatusFilter">
+              <option value="">ทุกสถานะ</option>
+              <option value="active">กำลังดำเนินการ</option>
+              <option value="overdue">ค้างชำระ (ยอดน้อยกว่ากำหนด)</option>
+              <option value="paid">ชำระครบแล้ว</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="dailyTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ลูกค้า</th>
+                  <th>เงินต้น</th>
+                  <th>ยอดรวมส่ง</th>
+                  <th>เวลา(วัน)</th>
+                  <th>ส่ง/วัน</th>
+                  <th>ส่งแล้ว</th>
+                  <th>คงเหลือ</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="dailyTableBody">
+                <tr class="empty-row"><td colspan="10">ยังไม่มีสัญญากู้รายวัน</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Pawns Page -->
+      <section class="page" id="page-pawns">
+        <div class="page-header">
+          <h1>จัดการจำนำ</h1>
+          <button class="btn btn-primary" id="addPawnBtn">+ เพิ่มรายการจำนำ</button>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="search" class="search-input" id="pawnSearch" placeholder="ค้นหาของจำนำ..." />
+            <select class="filter-select" id="pawnStatusFilter">
+              <option value="">ทุกสถานะ</option>
+              <option value="active">กำลังดำเนินการ</option>
+              <option value="overdue">เกินกำหนด</option>
+              <option value="redeemed">ไถ่ถอนแล้ว</option>
+              <option value="forfeited">หลุดจำนำ</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="pawnTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>ลูกค้า</th>
+                  <th>รายการ</th>
+                  <th>มูลค่าจำนำ</th>
+                  <th>ดอก/รอบ</th>
+                  <th>วันที่จำนำ</th>
+                  <th>ครบกำหนด</th>
+                  <th>ดอกค้าง</th>
+                  <th>รอบที่</th>
+                  <th>สถานะ</th>
+                  <th>จัดการ</th>
+                </tr>
+              </thead>
+              <tbody id="pawnTableBody">
+                <tr class="empty-row"><td colspan="11">ยังไม่มีรายการจำนำ</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transactions Page -->
+      <section class="page" id="page-transactions">
+        <div class="page-header">
+          <h1>รายการทั้งหมด</h1>
+          <button class="btn btn-primary" id="addTransactionBtn">+ บันทึกการชำระ</button>
+        </div>
+        <div class="card">
+          <div class="table-toolbar">
+            <input type="search" class="search-input" id="txSearch" placeholder="ค้นหา..." />
+            <select class="filter-select" id="txTypeFilter">
+              <option value="">ทุกประเภท</option>
+              <option value="interest">รับดอกเบี้ย</option>
+              <option value="daily_payment">รับกู้รายวัน</option>
+              <option value="loan_payment">รับคืนเงินกู้</option>
+              <option value="pawn_redeem">ไถ่จำนำ</option>
+              <option value="expense">รายจ่าย</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="txTable">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>วันที่</th>
+                  <th>ประเภท</th>
+                  <th>ลูกค้า</th>
+                  <th>รายละเอียด</th>
+                  <th>จำนวนเงิน</th>
+                  <th>หมายเหตุ</th>
+                </tr>
+              </thead>
+              <tbody id="txTableBody">
+                <tr class="empty-row"><td colspan="7">ยังไม่มีรายการ</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Reports Page -->
+      <section class="page" id="page-reports">
+        <div class="page-header">
+          <h1>รายงานการเงิน</h1>
+        </div>
+
+        <div class="report-filters card">
+          <div class="filter-row">
+            <label>เดือน:
+              <select id="reportMonth" class="filter-select">
+                <option value="0">มกราคม</option>
+                <option value="1">กุมภาพันธ์</option>
+                <option value="2">มีนาคม</option>
+                <option value="3">เมษายน</option>
+                <option value="4">พฤษภาคม</option>
+                <option value="5">มิถุนายน</option>
+                <option value="6">กรกฎาคม</option>
+                <option value="7">สิงหาคม</option>
+                <option value="8">กันยายน</option>
+                <option value="9">ตุลาคม</option>
+                <option value="10">พฤศจิกายน</option>
+                <option value="11">ธันวาคม</option>
+              </select>
+            </label>
+            <label>ปี:
+              <input type="number" id="reportYear" class="filter-select" value="2567" min="2560" max="2580" />
+            </label>
+            <button class="btn btn-primary" id="generateReport">สร้างรายงาน</button>
+          </div>
+        </div>
+
+        <div class="report-kpi">
+          <div class="kpi-card income">
+            <div class="kpi-icon">📥</div>
+            <div class="kpi-content">
+              <div class="kpi-label">รายรับทั้งหมด</div>
+              <div class="kpi-value" id="report-income">฿0</div>
+            </div>
+          </div>
+          <div class="kpi-card expense">
+            <div class="kpi-icon">📤</div>
+            <div class="kpi-content">
+              <div class="kpi-label">รายจ่ายทั้งหมด</div>
+              <div class="kpi-value" id="report-expense">฿0</div>
+            </div>
+          </div>
+          <div class="kpi-card profit">
+            <div class="kpi-icon">💹</div>
+            <div class="kpi-content">
+              <div class="kpi-label">กำไรสุทธิ</div>
+              <div class="kpi-value" id="report-profit">฿0</div>
+            </div>
+          </div>
+          <div class="kpi-card loan-total">
+            <div class="kpi-icon">🔄</div>
+            <div class="kpi-content">
+              <div class="kpi-label">ดอกรับ (เงินกู้)</div>
+              <div class="kpi-value" id="report-loan-interest">฿0</div>
+            </div>
+          </div>
+          <div class="kpi-card pawn-total">
+            <div class="kpi-icon">🔄</div>
+            <div class="kpi-content">
+              <div class="kpi-label">ดอกรับ (จำนำ)</div>
+              <div class="kpi-value" id="report-pawn-interest">฿0</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">รายการในช่วงเวลา</h2></div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr><th>วันที่</th><th>ประเภท</th><th>ลูกค้า</th><th>รายละเอียด</th><th>เงิน</th></tr>
+              </thead>
+              <tbody id="reportTxBody">
+                <tr class="empty-row"><td colspan="5">กดสร้างรายงานเพื่อดูข้อมูล</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- end pages-container -->
+  </main>
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- Customer Modal -->
+  <dialog class="modal" id="customerModal" aria-labelledby="customerModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="customerModalTitle">เพิ่มลูกค้า</h2>
+        <button class="modal-close" id="closeCustomerModal" aria-label="ปิด">✕</button>
+      </div>
+      <form id="customerForm" class="modal-form" novalidate>
+        <input type="hidden" id="customerId" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="customerName">ชื่อ-นามสกุล *</label>
+            <input type="text" id="customerName" required placeholder="กรอกชื่อ-นามสกุล" />
+          </div>
+          <div class="form-group">
+            <label for="customerPhone">เบอร์โทรศัพท์ *</label>
+            <input type="tel" id="customerPhone" required placeholder="0XX-XXX-XXXX" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="customerIdCard">เลขบัตรประชาชน</label>
+            <input type="text" id="customerIdCard" placeholder="X-XXXX-XXXXX-XX-X" maxlength="17" />
+          </div>
+          <div class="form-group">
+            <label for="customerLine">Line ID</label>
+            <input type="text" id="customerLine" placeholder="Line ID" />
+          </div>
+        </div>
+        <div class="form-group full">
+          <label for="customerAddress">ที่อยู่</label>
+          <textarea id="customerAddress" rows="2" placeholder="ที่อยู่ปัจจุบัน"></textarea>
+        </div>
+        <div class="form-group full">
+          <label for="customerNote">หมายเหตุ</label>
+          <textarea id="customerNote" rows="2" placeholder="หมายเหตุเพิ่มเติม"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelCustomer">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Loan Modal -->
+  <dialog class="modal" id="loanModal" aria-labelledby="loanModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="loanModalTitle">เพิ่มสัญญาเงินกู้</h2>
+        <button class="modal-close" id="closeLoanModal" aria-label="ปิด">✕</button>
+      </div>
+      <form id="loanForm" class="modal-form" novalidate>
+        <input type="hidden" id="loanId" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="loanCustomer">ลูกค้า *</label>
+            <select id="loanCustomer" required>
+              <option value="">-- เลือกลูกค้า --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="loanAmount">จำนวนเงินกู้ (บาท) *</label>
+            <input type="number" id="loanAmount" required min="1" placeholder="0.00" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="loanDate">วันที่กู้ *</label>
+            <input type="date" id="loanDate" required />
+          </div>
+          <div class="form-group">
+            <label for="loanDueDate">วันครบกำหนดรอบแรก</label>
+            <input type="date" id="loanDueDate" readonly />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="loanRate">อัตราดอกเบี้ย (% / 10 วัน) *</label>
+            <input type="number" id="loanRate" required min="0.1" max="100" step="0.1" value="20" placeholder="20" />
+          </div>
+          <div class="form-group">
+            <label for="loanInterestPreview">ดอกต่อรอบ (คำนวณ)</label>
+            <div class="info-box highlight" id="loanInterestPreview">฿0</div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label for="loanNote">หมายเหตุ</label>
+          <textarea id="loanNote" rows="2" placeholder="หมายเหตุ"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelLoan">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Pawn Modal -->
+  <dialog class="modal" id="pawnModal" aria-labelledby="pawnModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="pawnModalTitle">เพิ่มรายการจำนำ</h2>
+        <button class="modal-close" id="closePawnModal" aria-label="ปิด">✕</button>
+      </div>
+      <form id="pawnForm" class="modal-form" novalidate>
+        <input type="hidden" id="pawnId" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pawnCustomer">ลูกค้า *</label>
+            <select id="pawnCustomer" required>
+              <option value="">-- เลือกลูกค้า --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="pawnAmount">มูลค่าจำนำ (บาท) *</label>
+            <input type="number" id="pawnAmount" required min="1" placeholder="0.00" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group full">
+            <label for="pawnItem">รายการของ *</label>
+            <input type="text" id="pawnItem" required placeholder="เช่น ทอง 1บาท, มือถือ iPhone 15, นาฬิกา Rolex" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pawnDate">วันที่จำนำ *</label>
+            <input type="date" id="pawnDate" required />
+          </div>
+          <div class="form-group">
+            <label for="pawnDueDate">วันครบกำหนดรอบแรก</label>
+            <input type="date" id="pawnDueDate" readonly />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="pawnRate">อัตราดอกเบี้ย (% / 10 วัน) *</label>
+            <input type="number" id="pawnRate" required min="0.1" max="100" step="0.1" value="5" placeholder="5" />
+          </div>
+          <div class="form-group">
+            <label for="pawnInterestPreview">ดอกต่อรอบ (คำนวณ)</label>
+            <div class="info-box highlight" id="pawnInterestPreview">฿0</div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label for="pawnNote">หมายเหตุ (รายละเอียดของ)</label>
+          <textarea id="pawnNote" rows="2" placeholder="สภาพ, น้ำหนัก, ซีเรียล หรือรายละเอียดเพิ่มเติม"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelPawn">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Daily Loan Modal -->
+  <dialog class="modal" id="dailyModal" aria-labelledby="dailyModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="dailyModalTitle">เพิ่มเงินกู้รายวัน</h2>
+        <button class="modal-close" id="closeDailyModal" aria-label="ปิด">✕</button>
+      </div>
+      <form id="dailyForm" class="modal-form" novalidate>
+        <input type="hidden" id="dailyId" />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="dailyCustomer">ลูกค้า *</label>
+            <select id="dailyCustomer" required>
+              <option value="">-- เลือกลูกค้า --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="dailyAmount">ยอดกู้/เงินต้น (บาท) *</label>
+            <input type="number" id="dailyAmount" required min="1" placeholder="เช่น 2000" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="dailyRate">ดอกเบี้ยรวม (%) *</label>
+            <input type="number" id="dailyRate" required min="0.1" max="500" step="0.1" placeholder="เช่น 20" />
+          </div>
+          <div class="form-group">
+            <label for="dailyDuration">ระยะเวลา (วัน) *</label>
+            <input type="number" id="dailyDuration" required min="1" placeholder="เช่น 12" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="dailyDate">เริ่มกู้ *</label>
+            <input type="date" id="dailyDate" required />
+          </div>
+          <div class="form-group">
+            <label>ยอดส่งต่อวัน / ยอดรวมทั้งหมด</label>
+            <div class="info-box highlight" id="dailyPreview">฿0 / ฿0</div>
+          </div>
+        </div>
+        <div class="form-group full">
+          <label for="dailyNote">หมายเหตุ</label>
+          <textarea id="dailyNote" rows="2" placeholder="หมายเหตุ"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelDaily">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Pay Daily Modal -->
+  <dialog class="modal" id="payDailyModal" aria-labelledby="payDailyTitle">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2 id="payDailyTitle">รับเงินกู้รายวัน</h2>
+        <button class="modal-close" id="closePayDailyModal" aria-label="ปิด">✕</button>
+      </div>
+      <div class="modal-form">
+        <div class="pay-detail" id="payDailyDetail"></div>
+        <div class="form-group">
+          <label for="payDailyAmount">จำนวนที่รับ (บาท)</label>
+          <input type="number" id="payDailyAmount" min="1" />
+        </div>
+        <div class="form-group">
+          <label for="payDailyNote">หมายเหตุ</label>
+          <input type="text" id="payDailyNote" placeholder="หมายเหตุ..." />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelPayDaily">ยกเลิก</button>
+          <button type="button" class="btn btn-success" id="confirmPayDaily">ยืนยันรับเงิน</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Transaction Modal -->
+  <dialog class="modal" id="transactionModal" aria-labelledby="txModalTitle">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="txModalTitle">บันทึกการชำระ</h2>
+        <button class="modal-close" id="closeTxModal" aria-label="ปิด">✕</button>
+      </div>
+      <form id="txForm" class="modal-form" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="txDate">วันที่ *</label>
+            <input type="date" id="txDate" required />
+          </div>
+          <div class="form-group">
+            <label for="txType">ประเภท *</label>
+            <select id="txType" required>
+              <option value="">-- เลือกประเภท --</option>
+              <option value="interest">รับดอกเบี้ย</option>
+              <option value="daily_payment">รับกู้รายวัน</option>
+              <option value="loan_payment">รับคืนเงินกู้</option>
+              <option value="pawn_redeem">ไถ่จำนำ</option>
+              <option value="expense">รายจ่าย</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="txCustomer">ลูกค้า</label>
+            <select id="txCustomer">
+              <option value="">-- ไม่ระบุ --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="txAmount">จำนวนเงิน (บาท) *</label>
+            <input type="number" id="txAmount" required min="1" placeholder="0.00" />
+          </div>
+        </div>
+        <div class="form-group full">
+          <label for="txNote">หมายเหตุ / รายละเอียด</label>
+          <textarea id="txNote" rows="2" placeholder="รายละเอียดการชำระ..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelTx">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <!-- Pay Interest Modal -->
+  <dialog class="modal" id="payInterestModal" aria-labelledby="payInterestTitle">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2 id="payInterestTitle">รับดอกเบี้ย</h2>
+        <button class="modal-close" id="closePayInterestModal" aria-label="ปิด">✕</button>
+      </div>
+      <div class="modal-form">
+        <div class="pay-detail" id="payDetail"></div>
+        <div class="form-group">
+          <label for="payAmount">จำนวนดอกที่รับ (บาท)</label>
+          <input type="number" id="payAmount" min="1" />
+        </div>
+        <div class="form-group">
+          <label for="payNote">หมายเหตุ</label>
+          <input type="text" id="payNote" placeholder="หมายเหตุ..." />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelPayInterest">ยกเลิก</button>
+          <button type="button" class="btn btn-success" id="confirmPayInterest">ยืนยันรับดอก</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Quick Add Modal -->
+  <dialog class="modal" id="quickAddModal" aria-labelledby="quickAddTitle">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2 id="quickAddTitle">เพิ่มรายการใหม่</h2>
+        <button class="modal-close" id="closeQuickAdd" aria-label="ปิด">✕</button>
+      </div>
+      <div class="quick-add-grid">
+        <button class="quick-btn" id="qa-customer">
+          <span class="quick-icon">👥</span>
+          <span>เพิ่มลูกค้า</span>
+        </button>
+        <button class="quick-btn" id="qa-loan">
+          <span class="quick-icon">💰</span>
+          <span>เพิ่มเงินกู้</span>
+        </button>
+        <button class="quick-btn" id="qa-daily">
+          <span class="quick-icon">📅</span>
+          <span>กู้รายวัน</span>
+        </button>
+        <button class="quick-btn" id="qa-pawn">
+          <span class="quick-icon">💍</span>
+          <span>เพิ่มจำนำ</span>
+        </button>
+        <button class="quick-btn" id="qa-tx">
+          <span class="quick-icon">📋</span>
+          <span>บันทึกชำระ</span>
+        </button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Confirm Delete Modal -->
+  <dialog class="modal" id="confirmModal" aria-labelledby="confirmTitle">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2 id="confirmTitle">ยืนยันการลบ</h2>
+      </div>
+      <div class="modal-form">
+        <p id="confirmMessage">คุณต้องการลบรายการนี้ใช่หรือไม่?</p>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" id="cancelConfirm">ยกเลิก</button>
+          <button type="button" class="btn btn-danger" id="confirmDelete">ลบ</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Toast Notification -->
+  <div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
