@@ -18,12 +18,113 @@ const PERIOD_DAYS = 10;
 // ============================================================
 // Data Store (localStorage)
 // ============================================================
+window.APP_DATA = { customers: [], loans: [], pawns: [], daily_loans: [], transactions: [] };
+
 const DB = {
-  get: (key) => JSON.parse(localStorage.getItem('vider_' + key) || '[]'),
-  set: (key, val) => localStorage.setItem('vider_' + key, JSON.stringify(val)),
-  getOne: (key) => JSON.parse(localStorage.getItem('vider_' + key) || 'null'),
-  setOne: (key, val) => localStorage.setItem('vider_' + key, JSON.stringify(val)),
+  get: (key) => window.APP_DATA[key] || [],
+  set: (key, val) => {
+    const oldArr = window.APP_DATA[key] || [];
+    const newArr = val || [];
+    
+    // Optimistic local update
+    window.APP_DATA[key] = newArr;
+    
+    if (window.firebaseDb && window.firestore) {
+      const oldMap = new Map(oldArr.map(i => [i.id, i]));
+      const newMap = new Map(newArr.map(i => [i.id, i]));
+      
+      const batch = window.firestore.writeBatch(window.firebaseDb);
+      
+      for (const [id, item] of oldMap) {
+        if (!newMap.has(id)) {
+          batch.delete(window.firestore.doc(window.firebaseDb, key, id));
+        }
+      }
+      for (const [id, item] of newMap) {
+        const oldItem = oldMap.get(id);
+        if (!oldItem || JSON.stringify(oldItem) !== JSON.stringify(item)) {
+          batch.set(window.firestore.doc(window.firebaseDb, key, id), item);
+        }
+      }
+      
+      batch.commit().catch(e => console.error('Firestore sync err:', e));
+    } else {
+       // Fallback to localStorage if Firebase fails to load
+       localStorage.setItem('vider_' + key, JSON.stringify(val));
+    }
+  }
 };
+
+let renderTimeout;
+function triggerRender() {
+  clearTimeout(renderTimeout);
+  renderTimeout = setTimeout(() => {
+      if (typeof updateBadges === 'function') updateBadges();
+      const activeNav = document.querySelector('.nav-item.active');
+      if (activeNav) {
+         const page = activeNav.dataset.page;
+         if (page === 'dashboard') renderDashboard();
+         else if (page === 'customers') renderCustomers(document.getElementById('customerSearch').value);
+         else if (page === 'loans') renderLoans(document.getElementById('loanSearch').value, document.getElementById('loanStatusFilter').value);
+         else if (page === 'daily') renderDaily(document.getElementById('dailySearch').value, document.getElementById('dailyStatusFilter').value);
+         else if (page === 'pawns') renderPawns(document.getElementById('pawnSearch').value, document.getElementById('pawnStatusFilter').value);
+         else if (page === 'transactions') renderTransactions();
+      }
+  }, 100);
+}
+
+window.addEventListener('firebaseReady', async () => {
+  const collections = ['customers', 'loans', 'pawns', 'daily_loans', 'transactions'];
+  let totalDocs = 0;
+  
+  try {
+    const snapshots = await Promise.all(
+      collections.map(col => window.firestore.getDocs(window.firestore.collection(window.firebaseDb, col)))
+    );
+    
+    snapshots.forEach((snap, idx) => {
+      totalDocs += snap.size;
+      window.APP_DATA[collections[idx]] = snap.docs.map(d => d.data());
+    });
+
+    if (totalDocs === 0) {
+      console.log("Migrating from LocalStorage to Firestore...");
+      const batch = window.firestore.writeBatch(window.firebaseDb);
+      collections.forEach(col => {
+        const localData = JSON.parse(localStorage.getItem('vider_' + col) || '[]');
+        localData.forEach(item => {
+          batch.set(window.firestore.doc(window.firebaseDb, col, item.id), item);
+        });
+        window.APP_DATA[col] = localData;
+      });
+      await batch.commit();
+      console.log("Migration complete!");
+    }
+
+    // Set up real-time listeners
+    collections.forEach(col => {
+      window.firestore.onSnapshot(window.firestore.collection(window.firebaseDb, col), (snap) => {
+        // Skip updating if it has pending writes (we already optimistic-updated it locally)
+        // Wait, snap.metadata.hasPendingWrites is true if we initiated the write.
+        // It's safer to just blindly accept the snapshot.
+        window.APP_DATA[col] = snap.docs.map(d => d.data());
+        triggerRender();
+      });
+    });
+
+    // Hide loader
+    const loader = document.getElementById('appLoadingOverlay');
+    if (loader) loader.style.display = 'none';
+
+    // Initial render
+    triggerRender();
+
+  } catch (err) {
+    console.error("Firebase Initialization Error:", err);
+    alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณารีเฟรชหน้าเว็บ");
+  }
+});
+
 
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
