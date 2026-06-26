@@ -1593,3 +1593,19 @@ function init() {
 }
 
 init();
+
+
+// ============================================================
+// Fallback Timeout for Loading Overlay
+// ============================================================
+setTimeout(() => {
+  const loader = document.getElementById('appLoadingOverlay');
+  if (loader && loader.style.display !== 'none') {
+    console.warn("Firebase or Data fetch timeout. Falling back to offline mode.");
+    loader.style.display = 'none';
+    if (typeof showToast === 'function') {
+      showToast('เชื่อมต่อฐานข้อมูลช้า ระบบสลับเป็นโหมดออฟไลน์', 'error');
+    }
+    triggerRender();
+  }
+}, 4000);
