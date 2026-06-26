@@ -18,7 +18,13 @@ const PERIOD_DAYS = 10;
 // ============================================================
 // Data Store (localStorage)
 // ============================================================
-window.APP_DATA = { customers: [], loans: [], pawns: [], daily_loans: [], transactions: [] };
+window.APP_DATA = {
+  customers: JSON.parse(localStorage.getItem('vider_customers') || '[]'),
+  loans: JSON.parse(localStorage.getItem('vider_loans') || '[]'),
+  pawns: JSON.parse(localStorage.getItem('vider_pawns') || '[]'),
+  daily_loans: JSON.parse(localStorage.getItem('vider_daily_loans') || '[]'),
+  transactions: JSON.parse(localStorage.getItem('vider_transactions') || '[]')
+};
 
 const DB = {
   get: (key) => window.APP_DATA[key] || [],
@@ -26,8 +32,9 @@ const DB = {
     const oldArr = window.APP_DATA[key] || [];
     const newArr = val || [];
     
-    // Optimistic local update
+    // Optimistic local update & LocalStorage fallback cache
     window.APP_DATA[key] = newArr;
+    localStorage.setItem('vider_' + key, JSON.stringify(newArr));
     
     if (window.firebaseDb && window.firestore) {
       const oldMap = new Map(oldArr.map(i => [i.id, i]));
@@ -47,10 +54,10 @@ const DB = {
         }
       }
       
-      batch.commit().catch(e => console.error('Firestore sync err:', e));
-    } else {
-       // Fallback to localStorage if Firebase fails to load
-       localStorage.setItem('vider_' + key, JSON.stringify(val));
+      batch.commit().catch(e => {
+        console.error('Firestore sync err:', e);
+        if (typeof showToast === 'function') showToast('ออฟไลน์: บันทึกลงเครื่องแล้ว', 'error');
+      });
     }
   }
 };
@@ -108,6 +115,7 @@ window.addEventListener('firebaseReady', async () => {
         // Wait, snap.metadata.hasPendingWrites is true if we initiated the write.
         // It's safer to just blindly accept the snapshot.
         window.APP_DATA[col] = snap.docs.map(d => d.data());
+        localStorage.setItem('vider_' + col, JSON.stringify(window.APP_DATA[col]));
         triggerRender();
       });
     });
@@ -121,7 +129,11 @@ window.addEventListener('firebaseReady', async () => {
 
   } catch (err) {
     console.error("Firebase Initialization Error:", err);
-    alert("ไม่สามารถเชื่อมต่อฐานข้อมูลได้ กรุณารีเฟรชหน้าเว็บ");
+    // Hide loader and let them use the app offline with LocalStorage data
+    const loader = document.getElementById('appLoadingOverlay');
+    if (loader) loader.style.display = 'none';
+    triggerRender();
+    if (typeof showToast === 'function') showToast('โหมดออฟไลน์: ไม่สามารถเชื่อมต่อคลาวด์ได้', 'error');
   }
 });
 
