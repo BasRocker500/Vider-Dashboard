@@ -902,5 +902,31 @@
 
   <script src="app.js?v=3"></script>
   </div>
+
+  <script>
+    // Auto-inject data-label for mobile responsive tables
+    function updateTableLabels() {
+      document.querySelectorAll('.data-table').forEach(table => {
+        const headers = Array.from(table.querySelectorAll('th')).map(th => th.textContent.trim());
+        table.querySelectorAll('tbody tr').forEach(tr => {
+          tr.querySelectorAll('td').forEach((td, index) => {
+            if (headers[index]) {
+              td.setAttribute('data-label', headers[index]);
+            }
+          });
+        });
+      });
+    }
+    
+    // Run after renders
+    const originalTriggerRender = window.triggerRender;
+    if (typeof originalTriggerRender === 'function') {
+      window.triggerRender = function() {
+        originalTriggerRender();
+        setTimeout(updateTableLabels, 150);
+      };
+    }
+  </script>
 </body>
+
 </html>
