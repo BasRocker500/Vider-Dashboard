@@ -29,7 +29,8 @@ window.APP_DATA = {
 const DB = {
   get: (key) => window.APP_DATA[key] || [],
   set: (key, val) => {
-    const oldArr = window.APP_DATA[key] || [];
+    // Use localStorage as the pristine old state, because APP_DATA might have been mutated in-place
+    const oldArr = JSON.parse(localStorage.getItem('vider_' + key) || '[]');
     const newArr = val || [];
     
     // Optimistic local update & LocalStorage fallback cache
