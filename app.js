@@ -8,6 +8,65 @@
 
 'use strict';
 
+
+// ============================================================
+// Authentication System
+// ============================================================
+const MANAGERS = {
+  "1709901591262": "ภาณุเดช พุทธบัวงาม",
+  "1679900120330": "เพ็ญนภา เบ้าอาสา"
+};
+
+function checkAuth() {
+  const managerName = sessionStorage.getItem('vider_manager');
+  const loginScreen = document.getElementById('loginScreen');
+  const mainAppContainer = document.getElementById('mainAppContainer');
+  
+  if (managerName) {
+    if (loginScreen) loginScreen.style.display = 'none';
+    if (mainAppContainer) mainAppContainer.style.display = 'flex';
+  } else {
+    if (loginScreen) loginScreen.style.display = 'flex';
+    if (mainAppContainer) mainAppContainer.style.display = 'none';
+  }
+}
+
+// Check auth on load
+checkAuth();
+
+document.addEventListener('DOMContentLoaded', () => {
+  const loginBtn = document.getElementById('loginBtn');
+  const loginInput = document.getElementById('managerIdInput');
+  const logoutBtn = document.getElementById('nav-logout');
+  
+  if (loginBtn && loginInput) {
+    const handleLogin = () => {
+      const id = loginInput.value.trim();
+      if (MANAGERS[id]) {
+        sessionStorage.setItem('vider_manager', MANAGERS[id]);
+        showToast('ยินดีต้อนรับ ' + MANAGERS[id]);
+        checkAuth();
+        triggerRender();
+      } else {
+        showToast('หมายเลขประจำตัวไม่ถูกต้อง', 'error');
+      }
+    };
+    loginBtn.addEventListener('click', handleLogin);
+    loginInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') handleLogin();
+    });
+  }
+  
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      sessionStorage.removeItem('vider_manager');
+      window.location.reload();
+    });
+  }
+});
+
+
 // ============================================================
 // Constants & Config
 // ============================================================
