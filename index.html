@@ -37,6 +37,31 @@
 
 <body>
 
+  <!-- Login Screen -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand login-brand">
+        <div class="brand-icon">₿</div>
+        <div class="brand-text">
+          <span class="brand-name">Vider</span>
+          <span class="brand-sub">Finance</span>
+        </div>
+      </div>
+      <h2>เข้าสู่ระบบผู้จัดการ</h2>
+      <p>กรุณากรอกหมายเลขประจำตัวเพื่อเข้าสู่ระบบ</p>
+      
+      <div class="form-group">
+        <label for="managerIdInput">หมายเลขประจำตัว (13 หลัก)</label>
+        <input type="password" id="managerIdInput" class="form-control" placeholder="ระบุหมายเลขประจำตัว..." autocomplete="off">
+      </div>
+      <button id="loginBtn" class="btn btn-primary" style="width: 100%; margin-top: 1rem; padding: 0.75rem;">เข้าสู่ระบบ</button>
+    </div>
+  </div>
+  
+  <!-- Main App Container (Hidden until logged in) -->
+  <div id="mainAppContainer" style="display: none; width: 100%; height: 100%; display: flex;">
+
+
   <!-- Loading Overlay -->
   <div id="appLoadingOverlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:var(--bg-dark);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;">
     <div style="font-size:3rem;margin-bottom:1rem;animation:pulse 1.5s infinite;">⏳</div>
@@ -102,7 +127,15 @@
           <span class="nav-label">รายงาน</span>
         </a>
       </div>
+    
+      <div class="nav-section" style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-light);">
+        <a href="#" class="nav-item text-danger" id="nav-logout">
+          <span class="nav-icon">🚪</span>
+          <span class="nav-label">ออกจากระบบ</span>
+        </a>
+      </div>
     </nav>
+
 
     <div class="sidebar-footer">
       <div class="current-date" id="currentDate"></div>
@@ -868,5 +901,6 @@
   <div class="toast-container" id="toastContainer" aria-live="polite"></div>
 
   <script src="app.js?v=3"></script>
+  </div>
 </body>
 </html>
