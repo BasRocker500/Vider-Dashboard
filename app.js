@@ -339,7 +339,7 @@ function navigateTo(page) {
   const titles = {
     dashboard: 'แดชบอร์ด',
     customers: 'จัดการลูกค้า',
-    loans: 'จัดการเงินกู้ 10 วัน',
+    loans: 'จัดการกู้ดอกสะสมรายวัน',
     daily: 'จัดการเงินกู้รายวัน',
     pawns: 'จัดการจำนำ',
     transactions: 'รายการทั้งหมด',
