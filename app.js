@@ -720,7 +720,6 @@ function renderLoans(filter = '', statusFilter = '') {
         <td style="color:var(--accent-rose);font-weight:600">${formatMoney(l.amount)}</td>
         <td style="color:var(--accent-gold)">${formatMoney(dailyInterest)} <small style="color:var(--text-muted)">/ วัน</small></td>
         <td>${formatDate(l.date)}</td>
-        <td>${formatDate(due)}</td>
         <td style="color:${unpaid > 0 ? 'var(--accent-rose)' : 'var(--text-muted)'}; font-weight:600">${formatMoney(unpaid)}</td>
         <td><span style="color:var(--text-secondary)">${elapsedDays} วัน</span></td>
         <td><span class="type-badge ${statusBadge[liveStatus] || 'badge-active'}">${statusLabel[liveStatus] || liveStatus}</span></td>
