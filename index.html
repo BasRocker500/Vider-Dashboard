@@ -759,8 +759,14 @@
       </div>
       <div class="modal-form">
         <div class="pay-detail" id="payDailyDetail"></div>
+        
+        <div class="form-group">
+          <label for="payDailyDate">วันที่รับเงิน</label>
+          <input type="date" id="payDailyDate" class="form-control" required />
+        </div>
         <div class="form-group">
           <label for="payDailyAmount">จำนวนที่รับ (บาท)</label>
+
           <input type="number" id="payDailyAmount" min="1" />
         </div>
         <div class="form-group">
@@ -821,6 +827,32 @@
           <button type="submit" class="btn btn-primary">บันทึก</button>
         </div>
       </form>
+    </div>
+  </dialog>
+
+  
+  <!-- Close Contract Modal -->
+  <dialog class="modal" id="closeContractModal" aria-labelledby="closeContractTitle">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2 id="closeContractTitle">ปิดยอดสัญญา</h2>
+        <button class="modal-close" id="closeCloseContractModal" aria-label="ปิด">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="closeContractForm">
+          <div id="closeContractDetail" style="background:var(--bg-card);padding:1rem;border-radius:var(--radius-md);margin-bottom:1.5rem;line-height:1.6;font-size:0.95rem;border:1px solid var(--border-color);">
+            <!-- Populated via JS -->
+          </div>
+          <div class="form-group">
+            <label for="closeContractDate">วันที่ปิดยอด (เพื่อหยุดนับวัน)</label>
+            <input type="date" id="closeContractDate" class="form-control" required>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-outline" id="cancelCloseContract">ยกเลิก</button>
+            <button type="submit" class="btn btn-primary">ยืนยันปิดยอด</button>
+          </div>
+        </form>
+      </div>
     </div>
   </dialog>
 
