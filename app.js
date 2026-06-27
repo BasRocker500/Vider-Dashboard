@@ -247,24 +247,49 @@ function calcPeriods(startDate) {
  * paidPeriods defaults to 0 for legacy records
  */
 function calcUnpaidInterest(item) {
+  if (item._loanDefault) {
+    const days = Math.max(0, daysPassed(item.date));
+    const rate = item.rate || LOAN_RATE;
+    const dailyInterest = item.amount * (rate / 10);
+    const totalAccrued = dailyInterest * days;
+    const legacyPaid = (item.paidPeriods || 0) * (item.amount * rate);
+    const totalPaid = item.paidInterest !== undefined ? item.paidInterest : legacyPaid;
+    return Math.max(0, totalAccrued - totalPaid);
+  }
+  
   const elapsed = calcPeriods(item.date);
-  const paid = item.paidPeriods || 0;
-  const unpaid = Math.max(0, elapsed - paid);
-  const rate = item.rate || (item._loanDefault ? LOAN_RATE : PAWN_RATE);
-  return unpaid * item.amount * rate;
+  const rate = item.rate || PAWN_RATE;
+  const interestPerPeriod = item.amount * rate;
+  const accrued = elapsed * interestPerPeriod;
+  const legacyPaid = (item.paidPeriods || 0) * interestPerPeriod;
+  const totalPaid = item.paidInterest !== undefined ? item.paidInterest : legacyPaid;
+  return Math.max(0, accrued - totalPaid);
 }
 
-/**
- * Derive live status from paidPeriods vs elapsed periods.
- * Only call for active/overdue contracts — closed statuses pass through.
- */
+function nextDueDate(item) {
+  if (item._loanDefault) {
+    const rate = item.rate || LOAN_RATE;
+    const dailyInterest = item.amount * (rate / 10);
+    const legacyPaid = (item.paidPeriods || 0) * (item.amount * rate);
+    const totalPaid = item.paidInterest !== undefined ? item.paidInterest : legacyPaid;
+    const equivalentDaysPaid = dailyInterest > 0 ? Math.floor(totalPaid / dailyInterest) : 0;
+    return addDays(item.date, equivalentDaysPaid + PERIOD_DAYS);
+  }
+  
+  const rate = item.rate || PAWN_RATE;
+  const interestPerPeriod = item.amount * rate;
+  const legacyPaid = (item.paidPeriods || 0) * interestPerPeriod;
+  const totalPaid = item.paidInterest !== undefined ? item.paidInterest : legacyPaid;
+  const paid = interestPerPeriod > 0 ? Math.floor(totalPaid / interestPerPeriod) : 0;
+  return addDays(item.date, (paid + 1) * PERIOD_DAYS);
+}
+
 function getContractStatus(item) {
-  // Terminal states pass through
   if (['paid', 'redeemed', 'forfeited'].includes(item.status)) return item.status;
-  const elapsed = calcPeriods(item.date);
-  const paid = item.paidPeriods || 0;
-  if (elapsed === 0) return 'active';          // hasn't been 10 days yet
-  return elapsed > paid ? 'overdue' : 'active'; // unpaid periods = overdue
+  const due = nextDueDate(item);
+  const todayDate = new Date(today());
+  const dueDate = new Date(due);
+  return todayDate > dueDate ? 'overdue' : 'active';
 }
 
 /** Next due date based on paid periods */
@@ -653,7 +678,7 @@ function renderLoans(filter = '', statusFilter = '') {
   }
 
   // Compute live status before filtering
-  loans = loans.map(l => ({ ...l, _liveStatus: getContractStatus(l) }));
+  loans = loans.map(l => ({ ...l, _liveStatus: getContractStatus({ ...l, _loanDefault: true }) }));
 
   if (statusFilter) loans = loans.filter(l => l._liveStatus === statusFilter);
 
@@ -666,11 +691,10 @@ function renderLoans(filter = '', statusFilter = '') {
   tbody.innerHTML = loans.map((l, i) => {
     const cust = customers.find(c => c.id === l.customerId);
     const rate = l.rate || LOAN_RATE;
-    const interest = l.amount * rate;                   // ดอก/รอบ
+    const dailyInterest = l.amount * (rate / 10);
     const unpaid = calcUnpaidInterest({ ...l, _loanDefault: true });
-    const elapsed = calcPeriods(l.date);
-    const paid = l.paidPeriods || 0;
-    const due = nextDueDate(l);
+    const elapsedDays = Math.max(0, daysPassed(l.date));
+    const due = nextDueDate({ ...l, _loanDefault: true });
     const liveStatus = l._liveStatus;
     const statusLabel = { active: 'กำลังดำเนินการ', overdue: 'เกินกำหนด', paid: 'ชำระแล้ว' };
     const statusBadge = { active: 'badge-active', overdue: 'badge-overdue', paid: 'badge-paid' };
@@ -680,11 +704,11 @@ function renderLoans(filter = '', statusFilter = '') {
         <td>${i + 1}</td>
         <td><strong>${cust?.name || 'ไม่ระบุ'}</strong></td>
         <td style="color:var(--accent-rose);font-weight:600">${formatMoney(l.amount)}</td>
-        <td style="color:var(--accent-gold)">${formatMoney(interest)} <small style="color:var(--text-muted)">(${(rate*100).toFixed(1)}%)</small></td>
+        <td style="color:var(--accent-gold)">${formatMoney(dailyInterest)} <small style="color:var(--text-muted)">/ วัน</small></td>
         <td>${formatDate(l.date)}</td>
         <td>${formatDate(due)}</td>
         <td style="color:${unpaid > 0 ? 'var(--accent-rose)' : 'var(--text-muted)'}; font-weight:600">${formatMoney(unpaid)}</td>
-        <td><span style="color:var(--text-secondary)">${paid}/${elapsed} รอบ</span></td>
+        <td><span style="color:var(--text-secondary)">${elapsedDays} วัน</span></td>
         <td><span class="type-badge ${statusBadge[liveStatus] || 'badge-active'}">${statusLabel[liveStatus] || liveStatus}</span></td>
         <td>
           <div class="action-btns">
@@ -1224,8 +1248,18 @@ function deleteTransaction(id) {
         const key = tx.subType === 'loan' ? 'loans' : 'pawns';
         const items = DB.get(key);
         const idx = items.findIndex(item => item.id === tx.refId);
-        if (idx >= 0 && items[idx].paidPeriods > 0) {
-          items[idx].paidPeriods -= 1;
+        if (idx >= 0) {
+          if (key === 'loans') {
+            const legacyPaid = (items[idx].paidPeriods || 0) * (items[idx].amount * (items[idx].rate || LOAN_RATE));
+            const currentPaid = items[idx].paidInterest !== undefined ? items[idx].paidInterest : legacyPaid;
+            items[idx].paidInterest = Math.max(0, currentPaid - tx.amount);
+            items[idx].status = getContractStatus({ ...items[idx], _loanDefault: true });
+          } else {
+            const legacyPaid = (items[idx].paidPeriods || 0) * (items[idx].amount * (items[idx].rate || PAWN_RATE));
+            const currentPaid = items[idx].paidInterest !== undefined ? items[idx].paidInterest : legacyPaid;
+            items[idx].paidInterest = Math.max(0, currentPaid - tx.amount);
+            items[idx].status = getContractStatus(items[idx]);
+          }
           DB.set(key, items);
         }
       } else if (tx.type === 'loan_payment') {
