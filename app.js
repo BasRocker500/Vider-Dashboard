@@ -305,12 +305,6 @@ function getContractStatus(item) {
   return todayDate > dueDate ? 'overdue' : 'active';
 }
 
-/** Next due date based on paid periods */
-function nextDueDate(item) {
-  const paid = item.paidPeriods || 0;
-  // Next due = start + (paid + 1) * 10 days
-  return addDays(item.date, (paid + 1) * PERIOD_DAYS);
-}
 
 // ============================================================
 // Toast Notification
@@ -836,20 +830,37 @@ function deleteLoan(id) {
   });
 }
 
-function markLoanPaid(id) {
-  openConfirm('ยืนยันว่าลูกค้าชำระคืนเงินกู้ครบถ้วนแล้ว?', () => {
+let _closeContext = null;
+
+function openCloseContractModal(type, id) {
+  _closeContext = { type, id };
+  document.getElementById('closeContractDate').value = today();
+  document.getElementById('closeContractDetail').innerHTML = `คุณกำลังจะปิดยอดสัญญา กรุณาระบุวันที่ลูกค้าชำระเงินครบถ้วน (เพื่อหยุดการนับวันและดอกเบี้ย):`;
+  document.getElementById('closeContractModal').showModal();
+}
+
+document.getElementById('closeCloseContractModal').addEventListener('click', () => document.getElementById('closeContractModal').close());
+document.getElementById('cancelCloseContract').addEventListener('click', () => document.getElementById('closeContractModal').close());
+
+document.getElementById('closeContractForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  if (!_closeContext) return;
+  const { type, id } = _closeContext;
+  const closedDate = document.getElementById('closeContractDate').value;
+  
+  if (type === 'loan') {
     const loans = DB.get('loans');
     const idx = loans.findIndex(l => l.id === id);
     if (idx >= 0) {
       const loan = loans[idx];
       loans[idx].status = 'paid';
+      loans[idx].closedDate = closedDate;
       DB.set('loans', loans);
 
-      // Log transaction
       const txs = DB.get('transactions');
       txs.push({
         id: genId(),
-        date: today(),
+        date: closedDate,
         type: 'loan_payment',
         customerId: loan.customerId,
         refId: loan.id,
@@ -858,13 +869,37 @@ function markLoanPaid(id) {
         createdAt: Date.now(),
       });
       DB.set('transactions', txs);
-
-      renderLoans();
-      updateBadges();
-      showToast('บันทึกชำระเงินกู้แล้ว');
+      showToast('ปิดยอดเงินกู้แล้ว');
     }
-  });
-}
+  } else if (type === 'pawn') {
+    const pawns = DB.get('pawns');
+    const idx = pawns.findIndex(p => p.id === id);
+    if (idx >= 0) {
+      const pawn = pawns[idx];
+      pawns[idx].status = 'redeemed';
+      pawns[idx].closedDate = closedDate;
+      DB.set('pawns', pawns);
+
+      const txs = DB.get('transactions');
+      txs.push({
+        id: genId(),
+        date: closedDate,
+        type: 'pawn_redeem',
+        customerId: pawn.customerId,
+        refId: pawn.id,
+        amount: pawn.amount,
+        note: `ไถ่ถอน ${pawn.item}`,
+        createdAt: Date.now(),
+      });
+      DB.set('transactions', txs);
+      showToast('บันทึกไถ่ถอนแล้ว');
+    }
+  }
+  
+  document.getElementById('closeContractModal').close();
+  _closeContext = null;
+  triggerRender();
+});
 
 // ============================================================
 // Pawns
@@ -1022,34 +1057,7 @@ function deletePawn(id) {
   });
 }
 
-function markPawnRedeemed(id) {
-  openConfirm('ยืนยันว่าลูกค้าไถ่ถอนของคืนแล้ว?', () => {
-    const pawns = DB.get('pawns');
-    const idx = pawns.findIndex(p => p.id === id);
-    if (idx >= 0) {
-      const pawn = pawns[idx];
-      pawns[idx].status = 'redeemed';
-      DB.set('pawns', pawns);
 
-      const txs = DB.get('transactions');
-      txs.push({
-        id: genId(),
-        date: today(),
-        type: 'pawn_redeem',
-        customerId: pawn.customerId,
-        refId: pawn.id,
-        amount: pawn.amount,
-        note: `ไถ่คืน: ${pawn.item} (${formatMoney(pawn.amount)})`,
-        createdAt: Date.now(),
-      });
-      DB.set('transactions', txs);
-
-      renderPawns();
-      updateBadges();
-      showToast('บันทึกการไถ่ถอนแล้ว');
-    }
-  });
-}
 
 function markPawnForfeited(id) {
   openConfirm('ยืนยันว่าของชิ้นนี้หลุดจำนำ (ไม่มีการไถ่ถอน)?', () => {
