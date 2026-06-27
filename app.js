@@ -299,6 +299,12 @@ function nextDueDate(item) {
 
 function getContractStatus(item) {
   if (['paid', 'redeemed', 'forfeited'].includes(item.status)) return item.status;
+  
+  if (item._loanDefault) {
+    const unpaid = calcUnpaidInterest(item);
+    return unpaid > 0 ? 'overdue' : 'active';
+  }
+  
   const due = nextDueDate(item);
   const todayDate = new Date(today());
   const dueDate = new Date(due);
@@ -1092,28 +1098,54 @@ function openPayInterest(type, id) {
 
   const rate = item.rate || (type === 'loan' ? LOAN_RATE : PAWN_RATE);
   const cust = customers.find(c => c.id === item.customerId);
-  const interestPerPeriod = item.amount * rate;
-  const elapsed = calcPeriods(item.date);
-  const paid = item.paidPeriods || 0;
-  const unpaidPeriods = Math.max(0, elapsed - paid);
-  const unpaidAmount = unpaidPeriods * interestPerPeriod;
-  const due = nextDueDate(item);
+  
+  _payContext = { type, id, item };
 
-  _payContext = { type, id, item, rate, elapsed, paid, unpaidPeriods, interestPerPeriod };
+  if (type === 'loan') {
+    const dailyInterest = item.amount * (rate / 10);
+    const endDate = item.status === 'paid' && item.closedDate ? item.closedDate : today();
+    const days = Math.max(0, daysBetween(item.date, endDate));
+    const totalAccrued = dailyInterest * days;
+    const legacyPaid = (item.paidPeriods || 0) * (item.amount * rate);
+    const totalPaid = item.paidInterest !== undefined ? item.paidInterest : legacyPaid;
+    const unpaidAmount = Math.max(0, totalAccrued - totalPaid);
+    
+    document.getElementById('payDetail').innerHTML = `
+      <strong>ลูกค้า:</strong> ${cust?.name || 'ไม่ระบุ'}<br>
+      <strong>เงินต้น:</strong> ${formatMoney(item.amount)}<br>
+      <strong>ดอกเบี้ยสะสม:</strong> ${formatMoney(dailyInterest)} / วัน<br>
+      <strong>ผ่านมาแล้ว:</strong> ${days} วัน<br>
+      <strong>ดอกเบี้ยที่จ่ายแล้ว:</strong> ${formatMoney(totalPaid)}<br>
+      <strong>ดอกค้างทั้งหมด:</strong> <span style="color:var(--accent-gold);font-weight:700">${formatMoney(unpaidAmount)}</span>
+    `;
+    
+    document.getElementById('payAmount').value = unpaidAmount > 0 ? unpaidAmount : dailyInterest;
+  } else {
+    const interestPerPeriod = item.amount * rate;
+    const endDate = (item.status === 'paid' || item.status === 'redeemed' || item.status === 'forfeited') && item.closedDate ? item.closedDate : today();
+    const elapsed = calcPeriods(item.date, endDate);
+    const legacyPaid = (item.paidPeriods || 0) * interestPerPeriod;
+    const totalPaid = item.paidInterest !== undefined ? item.paidInterest : legacyPaid;
+    const accrued = elapsed * interestPerPeriod;
+    const unpaidAmount = Math.max(0, accrued - totalPaid);
+    
+    const paidPeriodsEquivalent = interestPerPeriod > 0 ? Math.floor(totalPaid / interestPerPeriod) : 0;
+    const due = addDays(item.date, (paidPeriodsEquivalent + 1) * PERIOD_DAYS);
 
-  document.getElementById('payDetail').innerHTML = `
-    <strong>ลูกค้า:</strong> ${cust?.name || 'ไม่ระบุ'}<br>
-    <strong>เงินต้น:</strong> ${formatMoney(item.amount)}<br>
-    <strong>อัตราดอก:</strong> ${(rate*100).toFixed(1)}% / 10 วัน → ${formatMoney(interestPerPeriod)}/รอบ<br>
-    <strong>รอบที่ผ่านมา:</strong> ${elapsed} รอบ | <strong>จ่ายแล้ว:</strong> ${paid} รอบ<br>
-    <strong>รอบค้างชำระ:</strong> <span style="color:var(--accent-rose);font-weight:700">${unpaidPeriods} รอบ</span><br>
-    <strong>ยอดค้างทั้งหมด:</strong> <span style="color:var(--accent-gold);font-weight:700">${formatMoney(unpaidAmount)}</span><br>
-    ${type === 'pawn' ? `<strong>ของ:</strong> ${item.item}<br>` : ''}
-    <strong>ครบกำหนดรอบถัดไป:</strong> ${formatDate(due)}
-  `;
+    document.getElementById('payDetail').innerHTML = `
+      <strong>ลูกค้า:</strong> ${cust?.name || 'ไม่ระบุ'}<br>
+      <strong>เงินต้น:</strong> ${formatMoney(item.amount)}<br>
+      <strong>อัตราดอก:</strong> ${(rate*100).toFixed(1)}% / 10 วัน → ${formatMoney(interestPerPeriod)}/รอบ<br>
+      <strong>รอบที่ผ่านมา:</strong> ${elapsed} รอบ<br>
+      <strong>ดอกเบี้ยที่จ่ายแล้ว:</strong> ${formatMoney(totalPaid)}<br>
+      <strong>ยอดค้างทั้งหมด:</strong> <span style="color:var(--accent-gold);font-weight:700">${formatMoney(unpaidAmount)}</span><br>
+      <strong>ของ:</strong> ${item.item}<br>
+      <strong>ครบกำหนดรอบถัดไป:</strong> ${formatDate(due)}
+    `;
+    
+    document.getElementById('payAmount').value = unpaidAmount > 0 ? unpaidAmount : interestPerPeriod;
+  }
 
-  // Default = all unpaid, or 1 period if nothing overdue
-  document.getElementById('payAmount').value = unpaidAmount > 0 ? unpaidAmount : interestPerPeriod;
   document.getElementById('payNote').value = '';
   document.getElementById('payInterestModal').showModal();
 }
