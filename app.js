@@ -713,6 +713,8 @@ function renderLoans(filter = '', statusFilter = '') {
     const statusLabel = { active: 'กำลังดำเนินการ', overdue: 'เกินกำหนด', paid: 'ชำระแล้ว' };
     const statusBadge = { active: 'badge-active', overdue: 'badge-overdue', paid: 'badge-paid' };
 
+    const totalPaid = l.paidInterest !== undefined ? l.paidInterest : ((l.paidPeriods || 0) * (l.amount * (l.rate || LOAN_RATE)));
+    
     return `
       <tr>
         <td>${i + 1}</td>
@@ -722,7 +724,12 @@ function renderLoans(filter = '', statusFilter = '') {
         <td>${formatDate(l.date)}</td>
         <td style="color:${unpaid > 0 ? 'var(--accent-rose)' : 'var(--text-muted)'}; font-weight:600">${formatMoney(unpaid)}</td>
         <td><span style="color:var(--text-secondary)">${elapsedDays} วัน</span></td>
-        <td><span class="type-badge ${statusBadge[liveStatus] || 'badge-active'}">${statusLabel[liveStatus] || liveStatus}</span></td>
+        <td>
+          <span class="type-badge ${statusBadge[liveStatus] || 'badge-active'}">
+            ${statusLabel[liveStatus] || liveStatus}
+            ${liveStatus === 'paid' ? `<br><small style="font-weight:normal;opacity:0.9">(กำไร ${formatMoney(totalPaid)})</small>` : ''}
+          </span>
+        </td>
         <td>
           <div class="action-btns">
             ${liveStatus !== 'paid' ? `<button class="btn-icon pay" title="รับดอก" onclick="openPayInterest('loan','${l.id}')">💵</button>` : ''}
@@ -853,16 +860,42 @@ document.getElementById('closeContractForm').addEventListener('submit', (e) => {
   const { type, id } = _closeContext;
   const closedDate = document.getElementById('closeContractDate').value;
   
+  const txs = DB.get('transactions');
+
   if (type === 'loan') {
     const loans = DB.get('loans');
     const idx = loans.findIndex(l => l.id === id);
     if (idx >= 0) {
       const loan = loans[idx];
+      
+      // Calculate unpaid interest at closing
+      const rate = loan.rate || LOAN_RATE;
+      const dailyInterest = loan.amount * (rate / 10);
+      const days = Math.max(0, daysBetween(loan.date, closedDate));
+      const totalAccrued = dailyInterest * days;
+      const legacyPaid = (loan.paidPeriods || 0) * (loan.amount * rate);
+      const currentPaid = loan.paidInterest !== undefined ? loan.paidInterest : legacyPaid;
+      const unpaidAmount = Math.max(0, totalAccrued - currentPaid);
+
+      if (unpaidAmount > 0) {
+        loan.paidInterest = currentPaid + unpaidAmount;
+        txs.push({
+          id: genId() + '_int',
+          date: closedDate,
+          type: 'interest',
+          customerId: loan.customerId,
+          amount: unpaidAmount,
+          note: `รับดอกเบี้ยค้างชำระตอนปิดยอด ${formatMoney(unpaidAmount)}`,
+          subType: 'loan',
+          refId: loan.id,
+          createdAt: Date.now(),
+        });
+      }
+
       loans[idx].status = 'paid';
       loans[idx].closedDate = closedDate;
       DB.set('loans', loans);
 
-      const txs = DB.get('transactions');
       txs.push({
         id: genId(),
         date: closedDate,
@@ -871,7 +904,7 @@ document.getElementById('closeContractForm').addEventListener('submit', (e) => {
         refId: loan.id,
         amount: loan.amount,
         note: `คืนเงินกู้ครบ ${formatMoney(loan.amount)}`,
-        createdAt: Date.now(),
+        createdAt: Date.now() + 1,
       });
       DB.set('transactions', txs);
       showToast('ปิดยอดเงินกู้แล้ว');
@@ -881,11 +914,35 @@ document.getElementById('closeContractForm').addEventListener('submit', (e) => {
     const idx = pawns.findIndex(p => p.id === id);
     if (idx >= 0) {
       const pawn = pawns[idx];
+
+      // Calculate unpaid interest at closing
+      const rate = pawn.rate || PAWN_RATE;
+      const interestPerPeriod = pawn.amount * rate;
+      const elapsed = calcPeriods(pawn.date, closedDate);
+      const accrued = elapsed * interestPerPeriod;
+      const legacyPaid = (pawn.paidPeriods || 0) * interestPerPeriod;
+      const currentPaid = pawn.paidInterest !== undefined ? pawn.paidInterest : legacyPaid;
+      const unpaidAmount = Math.max(0, accrued - currentPaid);
+
+      if (unpaidAmount > 0) {
+        pawn.paidInterest = currentPaid + unpaidAmount;
+        txs.push({
+          id: genId() + '_int',
+          date: closedDate,
+          type: 'interest',
+          customerId: pawn.customerId,
+          amount: unpaidAmount,
+          note: `รับดอกเบี้ยค้างชำระตอนไถ่ถอน ${formatMoney(unpaidAmount)}`,
+          subType: 'pawn',
+          refId: pawn.id,
+          createdAt: Date.now(),
+        });
+      }
+
       pawns[idx].status = 'redeemed';
       pawns[idx].closedDate = closedDate;
       DB.set('pawns', pawns);
 
-      const txs = DB.get('transactions');
       txs.push({
         id: genId(),
         date: closedDate,
@@ -894,7 +951,7 @@ document.getElementById('closeContractForm').addEventListener('submit', (e) => {
         refId: pawn.id,
         amount: pawn.amount,
         note: `ไถ่ถอน ${pawn.item}`,
-        createdAt: Date.now(),
+        createdAt: Date.now() + 1,
       });
       DB.set('transactions', txs);
       showToast('บันทึกไถ่ถอนแล้ว');
@@ -945,6 +1002,8 @@ function renderPawns(filter = '', statusFilter = '') {
     const liveStatus = p._liveStatus;
     const statusLabel = { active: 'กำลังดำเนินการ', overdue: 'เกินกำหนด', redeemed: 'ไถ่ถอนแล้ว', forfeited: 'หลุดจำนำ' };
     const statusBadge = { active: 'badge-active', overdue: 'badge-overdue', redeemed: 'badge-redeemed', forfeited: 'badge-forfeited' };
+    
+    const totalPaid = p.paidInterest !== undefined ? p.paidInterest : ((p.paidPeriods || 0) * (p.amount * (p.rate || PAWN_RATE)));
 
     return `
       <tr>
@@ -957,7 +1016,12 @@ function renderPawns(filter = '', statusFilter = '') {
         <td>${formatDate(due)}</td>
         <td style="color:${unpaid > 0 ? 'var(--accent-rose)' : 'var(--text-muted)'}; font-weight:600">${formatMoney(unpaid)}</td>
         <td><span style="color:var(--text-secondary)">${paid}/${elapsed} รอบ</span></td>
-        <td><span class="type-badge ${statusBadge[liveStatus] || 'badge-active'}">${statusLabel[liveStatus] || liveStatus}</span></td>
+        <td>
+          <span class="type-badge ${statusBadge[liveStatus] || 'badge-active'}">
+            ${statusLabel[liveStatus] || liveStatus}
+            ${liveStatus === 'redeemed' || liveStatus === 'forfeited' ? `<br><small style="font-weight:normal;opacity:0.9">(กำไร ${formatMoney(totalPaid)})</small>` : ''}
+          </span>
+        </td>
         <td>
           <div class="action-btns">
             ${liveStatus === 'active' || liveStatus === 'overdue' ? `<button class="btn-icon pay" title="รับดอก" onclick="openPayInterest('pawn','${p.id}')">💵</button>` : ''}
@@ -1157,22 +1221,25 @@ document.getElementById('confirmPayInterest').addEventListener('click', () => {
   const amount = parseFloat(document.getElementById('payAmount').value);
   if (!amount || amount <= 0) { showToast('กรุณากรอกจำนวนดอก', 'error'); return; }
 
-  const { type, id, item, interestPerPeriod, unpaidPeriods } = _payContext;
+  const { type, id, item } = _payContext;
 
-  // Figure out how many periods this payment covers (round down)
-  const periodsBeingPaid = interestPerPeriod > 0
-    ? Math.max(1, Math.round(amount / interestPerPeriod))
-    : 1;
-
-  // Advance paidPeriods
   const collection = type === 'loan' ? 'loans' : 'pawns';
   const records = DB.get(collection);
   const idx = records.findIndex(r => r.id === id);
+  
   if (idx >= 0) {
-    const currentPaid = records[idx].paidPeriods || 0;
-    const elapsed = calcPeriods(records[idx].date);
-    // Cap at elapsed so we don't overshoot
-    records[idx].paidPeriods = Math.min(elapsed, currentPaid + periodsBeingPaid);
+    const rate = records[idx].rate || (type === 'loan' ? LOAN_RATE : PAWN_RATE);
+    const legacyPaid = (records[idx].paidPeriods || 0) * (records[idx].amount * rate);
+    const currentPaid = records[idx].paidInterest !== undefined ? records[idx].paidInterest : legacyPaid;
+    
+    records[idx].paidInterest = currentPaid + amount;
+    
+    if (type === 'loan') {
+      records[idx].status = getContractStatus({ ...records[idx], _loanDefault: true });
+    } else {
+      records[idx].status = getContractStatus(records[idx]);
+    }
+    
     DB.set(collection, records);
   }
 
@@ -1186,7 +1253,7 @@ document.getElementById('confirmPayInterest').addEventListener('click', () => {
     customerId: item.customerId,
     amount,
     note: document.getElementById('payNote').value ||
-      `รับดอก${type === 'loan' ? 'เงินกู้' : 'จำนำ'} ${periodsBeingPaid} รอบ – ${cust?.name || ''}`,
+      `รับดอก${type === 'loan' ? 'เงินกู้' : 'จำนำ'} ${formatMoney(amount)} – ${cust?.name || ''}`,
     subType: type,
     refId: id,
     createdAt: Date.now(),
@@ -1194,11 +1261,13 @@ document.getElementById('confirmPayInterest').addEventListener('click', () => {
   DB.set('transactions', txs);
 
   document.getElementById('payInterestModal').close();
-  showToast(`รับดอกเบี้ย ${formatMoney(amount)} (${periodsBeingPaid} รอบ) แล้ว`, 'success');
+  showToast(`รับดอกเบี้ย ${formatMoney(amount)} แล้ว`, 'success');
 
   if (type === 'loan') renderLoans();
   else renderPawns();
   renderDashboard();
+  updateBadges();
+  _payContext = null;
 });
 
 // ============================================================
