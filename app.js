@@ -248,7 +248,7 @@ function calcPeriods(startDate) {
  */
 function calcUnpaidInterest(item) {
   if (item._loanDefault) {
-    const days = Math.max(0, daysPassed(item.date));
+    const days = Math.max(0, daysBetween(item.date, today()));
     const rate = item.rate || LOAN_RATE;
     const dailyInterest = item.amount * (rate / 10);
     const totalAccrued = dailyInterest * days;
@@ -693,7 +693,7 @@ function renderLoans(filter = '', statusFilter = '') {
     const rate = l.rate || LOAN_RATE;
     const dailyInterest = l.amount * (rate / 10);
     const unpaid = calcUnpaidInterest({ ...l, _loanDefault: true });
-    const elapsedDays = Math.max(0, daysPassed(l.date));
+    const elapsedDays = Math.max(0, daysBetween(l.date, today()));
     const due = nextDueDate({ ...l, _loanDefault: true });
     const liveStatus = l._liveStatus;
     const statusLabel = { active: 'กำลังดำเนินการ', overdue: 'เกินกำหนด', paid: 'ชำระแล้ว' };
