@@ -241,14 +241,14 @@ function formatDate(d) {
 
 /** Calculate accrued interest for a contract (total periods elapsed) */
 function calcAccruedInterest(startDate, rate, principal) {
-  const days = daysBetween(startDate, today());
+  const days = daysBetween(startDate, endDate);
   if (days <= 0) return 0;
   const periods = Math.floor(days / PERIOD_DAYS);
   return periods * (principal * rate);
 }
 
 /** Calculate periods elapsed since contract start */
-function calcPeriods(startDate) {
+function calcPeriods(startDate, endDate = today()) {
   const days = daysBetween(startDate, today());
   return Math.max(0, Math.floor(days / PERIOD_DAYS));
 }
@@ -259,7 +259,8 @@ function calcPeriods(startDate) {
  */
 function calcUnpaidInterest(item) {
   if (item._loanDefault) {
-    const days = Math.max(0, daysBetween(item.date, today()));
+    const endDate = item.status === 'paid' && item.closedDate ? item.closedDate : today();
+    const days = Math.max(0, daysBetween(item.date, endDate));
     const rate = item.rate || LOAN_RATE;
     const dailyInterest = item.amount * (rate / 10);
     const totalAccrued = dailyInterest * days;
@@ -268,7 +269,8 @@ function calcUnpaidInterest(item) {
     return Math.max(0, totalAccrued - totalPaid);
   }
   
-  const elapsed = calcPeriods(item.date);
+  const endDate = (item.status === 'paid' || item.status === 'redeemed' || item.status === 'forfeited') && item.closedDate ? item.closedDate : today();
+  const elapsed = calcPeriods(item.date, endDate);
   const rate = item.rate || PAWN_RATE;
   const interestPerPeriod = item.amount * rate;
   const accrued = elapsed * interestPerPeriod;
@@ -704,7 +706,8 @@ function renderLoans(filter = '', statusFilter = '') {
     const rate = l.rate || LOAN_RATE;
     const dailyInterest = l.amount * (rate / 10);
     const unpaid = calcUnpaidInterest({ ...l, _loanDefault: true });
-    const elapsedDays = Math.max(0, daysBetween(l.date, today()));
+    const endDate = l.status === 'paid' && l.closedDate ? l.closedDate : today();
+    const elapsedDays = Math.max(0, daysBetween(l.date, endDate));
     const due = nextDueDate({ ...l, _loanDefault: true });
     const liveStatus = l._liveStatus;
     const statusLabel = { active: 'กำลังดำเนินการ', overdue: 'เกินกำหนด', paid: 'ชำระแล้ว' };
@@ -724,7 +727,7 @@ function renderLoans(filter = '', statusFilter = '') {
         <td>
           <div class="action-btns">
             ${liveStatus !== 'paid' ? `<button class="btn-icon pay" title="รับดอก" onclick="openPayInterest('loan','${l.id}')">💵</button>` : ''}
-            ${liveStatus !== 'paid' ? `<button class="btn-icon redeem" title="ชำระครบ" onclick="markLoanPaid('${l.id}')">✅</button>` : ''}
+            ${liveStatus !== 'paid' ? `<button class="btn-icon redeem" title="ชำระครบ" onclick="openCloseContractModal('loan', '${l.id}')">✅</button>` : ''}
             <button class="btn-icon edit" title="แก้ไข" onclick="editLoan('${l.id}')">✏️</button>
             <button class="btn-icon delete" title="ลบ" onclick="deleteLoan('${l.id}')">🗑️</button>
           </div>
@@ -895,7 +898,8 @@ function renderPawns(filter = '', statusFilter = '') {
     const rate = p.rate || PAWN_RATE;
     const interest = p.amount * rate;
     const unpaid = calcUnpaidInterest(p);
-    const elapsed = calcPeriods(p.date);
+    const endDate = (p.status === 'redeemed' || p.status === 'forfeited') && p.closedDate ? p.closedDate : today();
+    const elapsed = calcPeriods(p.date, endDate);
     const paid = p.paidPeriods || 0;
     const due = nextDueDate(p);
     const liveStatus = p._liveStatus;
@@ -917,7 +921,7 @@ function renderPawns(filter = '', statusFilter = '') {
         <td>
           <div class="action-btns">
             ${liveStatus === 'active' || liveStatus === 'overdue' ? `<button class="btn-icon pay" title="รับดอก" onclick="openPayInterest('pawn','${p.id}')">💵</button>` : ''}
-            ${liveStatus === 'active' || liveStatus === 'overdue' ? `<button class="btn-icon redeem" title="ไถ่ถอน" onclick="markPawnRedeemed('${p.id}')">✅</button>` : ''}
+            ${liveStatus === 'active' || liveStatus === 'overdue' ? `<button class="btn-icon redeem" title="ไถ่ถอน" onclick="openCloseContractModal('pawn', '${p.id}')">✅</button>` : ''}
             ${liveStatus === 'active' || liveStatus === 'overdue' ? `<button class="btn-icon forfeited" title="หลุดจำนำ" onclick="markPawnForfeited('${p.id}')">🔒</button>` : ''}
             <button class="btn-icon edit" title="แก้ไข" onclick="editPawn('${p.id}')">✏️</button>
             <button class="btn-icon delete" title="ลบ" onclick="deletePawn('${p.id}')">🗑️</button>
@@ -1385,7 +1389,8 @@ function renderDaily(filter = '', statusFilter = '') {
   dailyLoans = dailyLoans.map(d => {
     let liveStatus = d.status;
     if (liveStatus !== 'paid') {
-      const elapsedDays = daysBetween(d.date, today());
+      const endDate = d.status === 'paid' && d.closedDate ? d.closedDate : today();
+      const elapsedDays = daysBetween(d.date, endDate);
       const expectedPaid = Math.min(d.totalAmount, elapsedDays * d.dailyInstallment);
       const actualPaid = d.paidAmount || 0;
       if (actualPaid < expectedPaid) liveStatus = 'overdue';
@@ -1553,6 +1558,7 @@ function openPayDaily(id) {
 
   document.getElementById('payDailyAmount').value = overdueAmount > 0 ? overdueAmount : item.dailyInstallment;
   document.getElementById('payDailyNote').value = '';
+  document.getElementById('payDailyDate').value = today();
   document.getElementById('payDailyModal').showModal();
 }
 
@@ -1565,7 +1571,11 @@ document.getElementById('confirmPayDaily').addEventListener('click', () => {
   if (!amount || amount <= 0) { showToast('กรุณากรอกจำนวนเงิน', 'error'); return; }
 
   const { id, item, remaining } = _payDailyContext;
+
+  const dateStr = document.getElementById('payDailyDate').value || today();
+  
   if (amount > remaining) {
+
     showToast(`รับเงินได้สูงสุดไม่เกินยอดคงเหลือ (${formatMoney(remaining)})`, 'error');
     return;
   }
@@ -1577,29 +1587,21 @@ document.getElementById('confirmPayDaily').addEventListener('click', () => {
     dailyLoans[idx].paidAmount = (dailyLoans[idx].paidAmount || 0) + amount;
     if (dailyLoans[idx].paidAmount >= dailyLoans[idx].totalAmount) {
       dailyLoans[idx].status = 'paid';
+      dailyLoans[idx].closedDate = dateStr;
     }
     DB.set('daily_loans', dailyLoans);
   }
 
   // Log transaction
   const txs = DB.get('transactions');
-  const cust = DB.get('customers').find(c => c.id === item.customerId);
-  
-  // Calculate proportional interest
-  const totalInterest = item.totalAmount - item.amount;
-  const interestRatio = totalInterest / item.totalAmount;
-  const interestAmount = amount * interestRatio;
-  
   txs.push({
     id: genId(),
-    date: today(),
+    date: dateStr,
     type: 'daily_payment',
     customerId: item.customerId,
-    amount,
-    interestAmount, // explicit field for profit calculation
-    note: document.getElementById('payDailyNote').value || `รับกู้รายวัน – ${cust?.name || ''}`,
-    subType: 'daily',
-    refId: id,
+    refId: item.id,
+    amount: amount,
+    note: note,
     createdAt: Date.now(),
   });
   DB.set('transactions', txs);
