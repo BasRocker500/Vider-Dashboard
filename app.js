@@ -154,27 +154,38 @@ window.addEventListener('firebaseReady', async () => {
       window.APP_DATA[collections[idx]] = snap.docs.map(d => d.data());
     });
 
-    if (totalDocs === 0) {
-      console.log("Migrating from LocalStorage to Firestore...");
+    if (true) {
+      console.log("Syncing LocalStorage to Firestore (Merge)...");
       const batch = window.firestore.writeBatch(window.firebaseDb);
+      let needsMigration = false;
       collections.forEach(col => {
         const localData = JSON.parse(localStorage.getItem('vider_' + col) || '[]');
+        const cloudMap = new Map(window.APP_DATA[col].map(i => [i.id, i]));
+        
         localData.forEach(item => {
-          batch.set(window.firestore.doc(window.firebaseDb, col, item.id), item);
+          if (!cloudMap.has(item.id)) {
+            batch.set(window.firestore.doc(window.firebaseDb, col, item.id), item);
+            window.APP_DATA[col].push(item);
+            needsMigration = true;
+          }
         });
-        window.APP_DATA[col] = localData;
       });
-      await batch.commit();
-      console.log("Migration complete!");
+      if (needsMigration) {
+        await batch.commit().catch(e => console.error("Migration blocked by rules:", e));
+        console.log("Migration synced!");
+      }
     }
 
     // Set up real-time listeners
     collections.forEach(col => {
       window.firestore.onSnapshot(window.firestore.collection(window.firebaseDb, col), (snap) => {
-        // Skip updating if it has pending writes (we already optimistic-updated it locally)
-        // Wait, snap.metadata.hasPendingWrites is true if we initiated the write.
-        // It's safer to just blindly accept the snapshot.
-        window.APP_DATA[col] = snap.docs.map(d => d.data());
+        const serverData = snap.docs.map(d => d.data());
+        // Prevent wiping local data if server unexpectedly returns empty (e.g. rules blocked migration)
+        if (serverData.length === 0 && window.APP_DATA[col] && window.APP_DATA[col].length > 0) {
+          console.warn('Server returned empty for ' + col + ' - preserving local data');
+          return;
+        }
+        window.APP_DATA[col] = serverData;
         localStorage.setItem('vider_' + col, JSON.stringify(window.APP_DATA[col]));
         triggerRender();
       });
